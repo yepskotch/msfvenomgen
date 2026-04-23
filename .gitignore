@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+.venv/
+venv/
+env/
+
+# Generated payloads
+*.exe
+*.elf
+*.dll
+*.msi
+*.hta
+*.apk
+*.macho
+*.war
+*.raw
+*.asp
+*.aspx
+*.jsp
+*.php
+payload.*
+
+# Temporary files
+*.raw.tmp
+/tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
