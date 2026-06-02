@@ -365,8 +365,18 @@ def get_output_filename(target_os: str, category: str, payload_idx: int, fmt: st
     else:
         ext = f".{fmt}"
     default_name = f"payload{ext}"
-    fname = prompt("Output filename", default_name)
-    return fname
+    cwd_real = os.path.realpath(os.getcwd())
+    while True:
+        fname = prompt("Output filename", default_name)
+        safe_name = os.path.basename(fname)
+        if not safe_name:
+            err("Invalid filename: must not be empty or a bare path.")
+            continue
+        safe_path = os.path.realpath(os.path.join(cwd_real, safe_name))
+        if not safe_path.startswith(cwd_real + os.sep):
+            err("Invalid filename: path traversal detected. Output must be in the current directory.")
+            continue
+        return safe_path
 
 
 def build_command(
