@@ -183,8 +183,8 @@ PAYLOADS: dict[str, dict[str, list[tuple]]] = {
 # Default file formats per OS / category
 DEFAULT_FORMATS: dict[str, dict[str, list[str]]] = {
     "Windows": {
-        "Reverse Shell": ["exe", "dll", "ps1", "hta", "msi"],
-        "Meterpreter":   ["exe", "dll", "ps1", "hta", "msi"],
+        "Reverse Shell": ["exe", "exe-service", "dll", "ps1", "hta", "msi"],
+        "Meterpreter":   ["exe", "exe-service", "dll", "ps1", "hta", "msi"],
     },
     "Linux": {
         "Reverse Shell": ["elf", "elf-so", "raw"],
@@ -360,10 +360,14 @@ def get_lhost_lport(detected_ip: str) -> tuple[str, str] | None:
 
 def get_output_filename(target_os: str, category: str, payload_idx: int, fmt: str) -> str:
     # Suggest a sensible default name
+    FORMAT_EXTENSIONS: dict[str, str] = {
+        "exe-service": ".exe",
+        "elf-so":      ".so",
+    }
     if target_os == "Web":
         ext = WEB_EXTENSIONS[payload_idx]
     else:
-        ext = f".{fmt}"
+        ext = FORMAT_EXTENSIONS.get(fmt, f".{fmt}")
     default_name = f"payload{ext}"
     cwd_real = os.path.realpath(os.getcwd())
     while True:
