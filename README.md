@@ -175,6 +175,10 @@ After a payload is generated you are offered:
   Generate payload? [y/N]: y
 ```
 
+## Credits
+
+The PowerShell wrapped loader uses a reflection-based P/Invoke technique adapted from [PowerSploit's Invoke-Shellcode](https://github.com/PowerShellMafia/PowerSploit/blob/master/CodeExecution/Invoke-Shellcode.ps1) by Matthew Graeber ([@mattifestation](https://twitter.com/mattifestation)), licensed under BSD 3-Clause.
+
 ## License
 
 [MIT](LICENSE) — Copyright (c) 2026 skotch

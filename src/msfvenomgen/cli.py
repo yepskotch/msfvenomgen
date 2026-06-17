@@ -399,6 +399,9 @@ def build_command(
 
 PS1_WRAPPER = """\
 # MSFVenomGen - PowerShell shellcode loader
+# Reflection-based P/Invoke technique adapted from PowerSploit's Invoke-Shellcode
+# by Matthew Graeber (@mattifestation) - https://github.com/PowerShellMafia/PowerSploit
+# Licensed under BSD 3-Clause License
 
 # Architecture guard: ensure PowerShell bitness matches shellcode
 $is64 = [IntPtr]::Size -eq 8
