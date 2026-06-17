@@ -9,17 +9,29 @@ Interactive `msfvenom` payload generator. Automatically detects your local IP (p
 - `nc` (netcat) — optional, for the netcat listener
 - Linux (uses `ioctl` + `/proc/net/dev` for interface detection)
 
+## Installation
+
+Install directly from GitHub using `pipx`:
+
+```bash
+pipx install git+https://github.com/yepskotch/msfvenomgen.git
+```
+
+If `pipx` is not installed:
+
+```bash
+# Debian/Ubuntu
+sudo apt install pipx
+
+# or via pip
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+```
+
 ## Usage
 
 ```bash
-python3 msfvenomgen.py
-```
-
-Or make it executable and run directly:
-
-```bash
-chmod +x msfvenomgen.py
-./msfvenomgen.py
+msfvenomgen
 ```
 
 ## Menu flow
@@ -43,7 +55,7 @@ Each step presents a numbered list. Enter `0` at any point to go back or quit.
 
 | OS      | Categories                    | Formats                          |
 |---------|-------------------------------|----------------------------------|
-| Windows | Reverse Shell, Meterpreter    | exe, dll, ps1, hta, msi          |
+| Windows | Reverse Shell, Meterpreter    | exe, exe-service, dll, ps1, hta, msi |
 | Linux   | Reverse Shell, Meterpreter    | elf, elf-so, raw                 |
 | macOS   | Reverse Shell, Meterpreter    | macho, raw                       |
 | Web     | Web Payload                   | php, jsp, war, asp, aspx         |
