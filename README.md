@@ -55,7 +55,7 @@ Each step presents a numbered list. Enter `0` at any point to go back or quit.
 
 | OS      | Categories                    | Formats                          |
 |---------|-------------------------------|----------------------------------|
-| Windows | Reverse Shell, Meterpreter    | exe, exe-service, dll, ps1, hta, msi |
+| Windows | Reverse Shell, Meterpreter    | exe, exe-service, dll, ps1, hta, msi, raw |
 | Linux   | Reverse Shell, Meterpreter    | elf, elf-so, raw                 |
 | macOS   | Reverse Shell, Meterpreter    | macho, raw                       |
 | Web     | Web Payload                   | php, jsp, war, asp, aspx         |
