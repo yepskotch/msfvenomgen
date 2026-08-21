@@ -183,8 +183,8 @@ PAYLOADS: dict[str, dict[str, list[tuple]]] = {
 # Default file formats per OS / category
 DEFAULT_FORMATS: dict[str, dict[str, list[str]]] = {
     "Windows": {
-        "Reverse Shell": ["exe", "exe-service", "dll", "ps1", "hta", "msi"],
-        "Meterpreter":   ["exe", "exe-service", "dll", "ps1", "hta", "msi"],
+        "Reverse Shell": ["exe", "exe-service", "dll", "ps1", "hta", "msi", "raw"],
+        "Meterpreter":   ["exe", "exe-service", "dll", "ps1", "hta", "msi", "raw"],
     },
     "Linux": {
         "Reverse Shell": ["elf", "elf-so", "raw"],
