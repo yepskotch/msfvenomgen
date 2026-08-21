@@ -11,10 +11,16 @@ Interactive `msfvenom` payload generator. Automatically detects your local IP (p
 
 ## Installation
 
-Install directly from GitHub using `pipx`:
+Install via `pipx` (recommended):
 
 ```bash
-pipx install git+https://github.com/yepskotch/msfvenomgen.git
+pipx install msfvenomgen
+```
+
+Or via `pip`:
+
+```bash
+pip install msfvenomgen
 ```
 
 If `pipx` is not installed:
