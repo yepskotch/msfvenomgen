@@ -1,0 +1,41 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-publish:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build package
+        run: python -m build
+
+      # Using API token for initial publish (package must exist on PyPI before
+      # Trusted Publishing can be configured). Once the package exists:
+      #   1. Go to PyPI → msfvenomgen → Publishing → Add a new publisher
+      #   2. Set: owner=yepskotch, repo=msfvenomgen, workflow=publish.yml
+      #   3. Remove the PYPI_API_TOKEN secret
+      #   4. Replace the `password` line below with:
+      #        permissions:
+      #          id-token: write
+      #      and change `password: ...` to use trusted publishing (no password needed)
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
